@@ -1,0 +1,8 @@
+---
+If:
+  PathMatch: .*\.h
+CompileFlags:
+  Add: [-DBLIB_IMPLEMENTATION]
+---
+CompileFlags:
+  Add: [-xc, -Wall, -Werror, -pedantic, -std=c11]
