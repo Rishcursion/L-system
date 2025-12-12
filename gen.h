@@ -1,4 +1,4 @@
-#ifndef lsys
+#ifndef gen
 #include "buffer_struct.h"
 #include <stddef.h>
 /* axiom: F-F-F-F
@@ -19,4 +19,4 @@ void G_init(Grammar *Lsys, char **postulates, int rule_count);
 void generate(ReadWriteBuff *RWB, Grammar *Lsys);
 void calculate(ReadWriteBuff *RWB);
 void createSVG(char **directions);
-#endif // !lsys
+#endif // !gen

@@ -1,4 +1,4 @@
-#include "lsys.h"
+#include "gen.h"
 #include "buffer_struct.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,31 +27,9 @@ quick access. Ensure that the grammar is context-free, otherwise postulates will
 be over-written.
 */
 void G_init(Grammar *G, char **grammar, int rule_count) {
-  G->axiom = grammar[1];
+  G->axiom = grammar[0];
   memset(G->postulates, 0, sizeof(G->postulates));
-  for (int i = 2; i < rule_count; i += 2) {
+  for (int i = 1; i < rule_count; i += 2) {
     G->postulates[(unsigned char)grammar[i][0]] = grammar[i + 1];
   }
-}
-
-int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    printf("Insufficient Arguments..., Exiting");
-    return EXIT_FAILURE;
-  }
-  Grammar G;
-  ReadWriteBuff RWB;
-  G_init(&G, argv, argc);
-  RW_init(&RWB, G.axiom, 2048);
-  printf("Succesfully initialized grammar\n");
-  printf("Axiom: A -> %s\n", G.axiom);
-  for (int i = 2; i < argc; i += 2) {
-    printf("Postulate:%s  -> %s\n", argv[i],
-           G.postulates[(unsigned char)argv[i][0]]);
-  }
-  for (int i = 0; i < 4; i++) {
-    printf("Gen %d: %s\n", i, RWB.read_buf);
-    generate(&RWB, &G);
-  }
-  return EXIT_SUCCESS;
 }
