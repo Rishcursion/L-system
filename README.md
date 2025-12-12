@@ -59,3 +59,15 @@ gcc turtle.c render.c buffer_struct.c gen.c -lm -o <program name>
 ./<program name> <number of iterations> <turn angle> <axiom/seed> [<postulate LHS> <postulate RHS>]*repeat
 ```
 
+## Examples
+```
+// Fern Leaf Generation
+./<program> 6 25.0 -X X "F+[[X]-X]-F[-FX]+X" F "FF" > plant.svg
+
+// Snowflake Generation
+./<program> 4 60.0 "F++F++F" F "F-F++F-F" > snowflake.svg
+
+//The Sierpinski Arrowhead
+./<program> 6 60.0 F F "G-F-G" G "F+G+F" > sierpinski.svg
+```
+
