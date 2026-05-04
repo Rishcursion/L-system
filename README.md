@@ -1,73 +1,86 @@
-# Fractal Maker
-A hobby C project for generating recursive structures using formal language and L-systems, produces an SVG output that can be viewed in the browser.
+# L-system
 
-## Theory
-In L-systems, we begin with a generator or a simple initial structure, and recursively update each part of the generator with an initiator, resulting in an infinitelygrowing pattern as defined by the grammar. 
-The L-system grammar consists of the following:
- - Variables 
- - Axiom
- - Postulates
+> **A tiny C program that turns a context-free grammar into a fractal SVG. Give it an axiom and a few rewrite rules, get back a snowflake or a fern. Built in a weekend because I wanted an excuse to write turtle graphics from scratch.**
 
-The variables are part of the symbols present in the grammar associated with a specific action for e.g.
-- F, G -> draw a line
-- \+ -> turn right
-- \- -> turn left
-- [ -> push current state to stack
-- ] -> restore previous state from stack.
+L-systems are the trick that makes procedural plants in video games look organic. The premise is from theoretical CS: you start with a string (the *axiom*), apply rewrite rules in parallel a few times, and the resulting string drives a "turtle" that walks around drawing line segments. Done right, you get fractals; done wrong, you get a spirograph that ate too much.
 
-By formalizing a grammar, we can draw infinitely repeating patterns just from a small initial seed, for e.g.
+Sample output (`examples/`):
+
+| Fern | Dragon curve | Hilbert curve | Snowflake |
+|---|---|---|---|
+| `examples/tree.svg` | `examples/dragon.svg` | `examples/hilbert.svg` | `examples/snowflake.svg` |
+
+## How it works
 
 ```
-Variables: a,b
-axiom: a
-postulates:
-    i) a -> ab 
-    ii) b -> ba 
-Aim: Derive the string abba from the axiom
-i)      a
-        |
-ii)     ab
-        / \
-iii)   ab ba
-
-we can continue if we want to generate more complex patterns, but this results in exponential growth of memory required so be careful :D
-       / \   / \
-iv)   ab ba ab ba
-     / \/ \/ \ / \
-   ab ba ba ab ab ba ba ab (roughly doubles every generation for this specific pattern)
+                       ┌────────────────────┐
+   axiom + rules  ──▶  │  gen.c             │  ──▶  expanded string
+                       │  (string rewriter) │       e.g. "F+F-F+F+F-F-F-F+F"
+                       └────────────────────┘
+                                                          │
+                                                          ▼
+                       ┌────────────────────┐
+   expanded string ──▶ │  turtle.c          │  ──▶  list of (x,y) line segments
+                       │  (cursor + stack)  │
+                       └────────────────────┘
+                                                          │
+                                                          ▼
+                       ┌────────────────────┐
+                       │  render.c          │  ──▶  SVG to stdout
+                       └────────────────────┘
 ```
 
-## Requirements
-```
-gcc (GCC) 15.2.1 20251112
-(or)
-clang version 21.1.6
+Three pieces:
+- **`gen.c`** — the grammar rewriter. Postulates are stored in a 256-entry ASCII lookup table, so substitution is O(1) per character.
+- **`turtle.c`** — the turtle: position, heading, color, plus a stack so `[` and `]` save/restore state (this is what lets you draw a tree with branches).
+- **`render.c`** — emits SVG `<path>` elements, normalized to fit a viewbox.
+
+The turtle alphabet I went with:
+- `F`, `G` — step forward, drawing
+- `+` — turn right by `<angle>` degrees
+- `-` — turn left
+- `[` — push state
+- `]` — pop state
+- anything else — no-op (so non-drawing variables like `X` just expand silently)
+
+## Build
+
+```bash
+gcc turtle.c render.c buffer_struct.c gen.c -lm -o lsystem
+# Or with clang
+clang turtle.c render.c buffer_struct.c gen.c -lm -o lsystem
 ```
 
-## Setup
-```
-# Clone the repository via https
-
-git clone https://github.com:Rishcursion/L-system.git 
-```
+Tested with `gcc 15.2.1` and `clang 21.1.6`; should compile cleanly with anything C99-or-later.
 
 ## Usage
+
 ```
-# Compile and link all C files using your preferred compiler
-gcc turtle.c render.c buffer_struct.c gen.c -lm -o <program name>
-# Run the program with desired L-system Context Free Grammar
-./<program name> <number of iterations> <turn angle> <axiom/seed> [<postulate LHS> <postulate RHS>]*repeat
+./lsystem <iterations> <angle> <axiom> [<lhs> <rhs>]...
 ```
 
-## Examples
+The output goes to stdout — pipe it to a `.svg` file and open in a browser.
+
+### Examples
+
+```bash
+# Fern leaf
+./lsystem 6 25.0 "-X" X "F+[[X]-X]-F[-FX]+X" F "FF" > plant.svg
+
+# Koch snowflake
+./lsystem 4 60.0 "F++F++F" F "F-F++F-F" > snowflake.svg
+
+# Sierpinski arrowhead
+./lsystem 6 60.0 F F "G-F-G" G "F+G+F" > sierpinski.svg
+
+# Dragon curve
+./lsystem 10 90.0 FX X "X+YF+" Y "-FX-Y" > dragon.svg
 ```
-// Fern Leaf Generation
-./<program> 6 25.0 -X X "F+[[X]-X]-F[-FX]+X" F "FF" > plant.svg
 
-// Snowflake Generation
-./<program> 4 60.0 "F++F++F" F "F-F++F-F" > snowflake.svg
+## A warning about iterations
 
-//The Sierpinski Arrowhead
-./<program> 6 60.0 F F "G-F-G" G "F+G+F" > sierpinski.svg
-```
+The output string roughly doubles per iteration for non-trivial grammars. `iterations=10` on the dragon curve is fine; `iterations=15` is ~32× larger and takes a noticeable second; `iterations=20` will blow your RAM. There's no streaming — the full expanded string lives in memory before rendering. That was a deliberate simplification; a streaming rewriter would be a fun follow-up.
 
+## Why C and not, like, Python in 30 lines
+
+Honestly? Python *would* be 30 lines. The point wasn't the L-system — the point was practicing manual memory management on something fun enough to actually finish. The dynamic buffer in `buffer_struct.c` (read buffer + write buffer + swap), the turtle stack, the rule lookup table — those are the bits I'd struggle to write under interview pressure, so I wanted to write them under no pressure first.
